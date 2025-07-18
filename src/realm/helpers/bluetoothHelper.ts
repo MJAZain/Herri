@@ -1,19 +1,106 @@
-import { BleManager } from 'react-native-ble-plx';
+import RNBluetoothClassic, { BluetoothDevice } from 'react-native-bluetooth-classic';
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type BluetoothDevice = {
-  id: string;
-  name: string | null;
+const CONNECTED_DEVICE_KEY = 'CONNECTED_PRINTER_ID';
+const PAPER_WIDTH_KEY = 'PRINTER_PAPER_WIDTH';
+let connectedDevice: BluetoothDevice | null = null;
+
+if (__DEV__) {
+  (global as any).connectedPrinter = connectedDevice;
+}
+
+export const saveConnectedDeviceId = async (deviceId: string) => {
+  await AsyncStorage.setItem(CONNECTED_DEVICE_KEY, deviceId);
 };
 
-const bleManager = new BleManager();
+export const getSavedConnectedDeviceId = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem(CONNECTED_DEVICE_KEY);
+};
+
+export const clearConnectedDeviceId = async () => {
+  await AsyncStorage.removeItem(CONNECTED_DEVICE_KEY);
+};
+
+export const savePaperWidth = async (width: '58' | '76' | '80') => {
+  try {
+    await AsyncStorage.setItem('PAPER_WIDTH', width);
+  } catch (err) {
+    console.error('Failed to save paper width:', err);
+  }
+};
+
+export const getSavedPaperWidth = async (): Promise<'58' | '76' | '80' | null> => {
+  try {
+    const value = await AsyncStorage.getItem('PAPER_WIDTH');
+    if (value === '58' || value === '76' || value === '80') {
+      return value;
+    }
+    return null;
+  } catch (err) {
+    console.error('Failed to load paper width:', err);
+    return null;
+  }
+};
+
+export const clearPaperWidth = async () => {
+  await AsyncStorage.removeItem(PAPER_WIDTH_KEY);
+};
+
+export const connectToPrinter = async (deviceId: string): Promise<BluetoothDevice | null> => {
+  try {
+    const devices = await RNBluetoothClassic.getBondedDevices();
+    const device = devices.find(d => d.id === deviceId);
+    if (!device) throw new Error('Device not found');
+
+    const connected = await RNBluetoothClassic.connectToDevice(device.id);
+    if (connected) {
+      connectedDevice = device;
+      console.log('✅ Connected to printer:', deviceId);
+      return device;
+    } else {
+      throw new Error('Connection failed');
+    }
+  } catch (error) {
+    console.error('❌ Connection error:', error);
+    return null;
+  }
+};
+
+export const disconnectPrinter = async (): Promise<boolean> => {
+  if (!connectedDevice) {
+    console.log('ℹ️ No device to disconnect');
+    return true;
+  }
+
+  try {
+    await connectedDevice.disconnect();
+    
+    console.log('🔌 Disconnected from printer:', connectedDevice.name);
+
+    connectedDevice = null;
+    await clearConnectedDeviceId();
+    
+    return true;
+  } catch (error: unknown) {
+    console.error('❌ Disconnect error:', error);
+    
+    if (error instanceof Error) {
+      console.error('Disconnect failed:', error.message);
+    }
+    
+    return false;
+  }
+};
+
+export const getConnectedDevice = () => connectedDevice;
 
 const requestPermissions = async () => {
   if (Platform.OS === 'android' && Platform.Version >= 23) {
     const granted = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
     ]);
     return Object.values(granted).every(status => status === PermissionsAndroid.RESULTS.GRANTED);
   }
@@ -21,8 +108,7 @@ const requestPermissions = async () => {
 };
 
 export const checkBluetoothEnabled = async () => {
-  const state = await bleManager.state();
-  return state === 'PoweredOn';
+  return await RNBluetoothClassic.isBluetoothEnabled();
 };
 
 export const listPairedDevices = async (): Promise<BluetoothDevice[]> => {
@@ -32,79 +118,126 @@ export const listPairedDevices = async (): Promise<BluetoothDevice[]> => {
     return [];
   }
 
-  return new Promise((resolve) => {
-    const devices: BluetoothDevice[] = [];
-    bleManager.startDeviceScan(null, null, (error, device) => {
-      if (error) {
-        console.error('Scan error', error);
-        resolve([]);
-        return;
-      }
-      if (device && !devices.find(d => d.id === device.id)) {
-        devices.push({ id: device.id, name: device.name });
-      }
-    });
-
-    setTimeout(() => {
-      bleManager.stopDeviceScan();
-      resolve(devices);
-    }, 5000);
-  });
-};
-
-let connectedDevice: any = null;
-
-export const connectToPrinter = async (deviceId: string) => {
   try {
-    connectedDevice = await bleManager.connectToDevice(deviceId);
-    await connectedDevice.discoverAllServicesAndCharacteristics();
-    console.log('Connected to device:', deviceId);
-    return true;
+    const devices = await RNBluetoothClassic.getBondedDevices();
+    return devices;
   } catch (error) {
-    console.error('Connection error:', error);
-    return false;
+    console.error('🔍 Failed to list paired devices:', error);
+    return [];
   }
 };
 
-export const disconnectPrinter = async () => {
+export const reconnectIfNeeded = async (): Promise<BluetoothDevice | null> => {
+  const savedId = await getSavedConnectedDeviceId();
+  if (!savedId) return null;
+
+  return await connectToPrinter(savedId);
+};
+
+export const isDeviceStillConnected = async (): Promise<boolean> => {
   try {
-    if (connectedDevice) {
-      await connectedDevice.cancelConnection();
-      console.log('Disconnected');
-      connectedDevice = null;
+    const connectedDevices: BluetoothDevice[] = await RNBluetoothClassic.getConnectedDevices();
+    return connectedDevices.length > 0;
+  } catch (error: unknown) {
+    console.error('Failed to check connection state:', error);
+    
+    if (error instanceof Error) {
+      console.error(error.message);
     }
-    return true;
-  } catch (error) {
-    console.error('Disconnect error', error);
+    
     return false;
   }
 };
-
-// You need to know the serviceUUID and characteristicUUID your printer uses
-const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
-const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
 export const printReceipt = async (receipt: string): Promise<boolean> => {
   try {
-    const connectedDevice = await bleManager.connectedDevices([SERVICE_UUID]);
-    if (!connectedDevice.length) {
+    const connected = await isDeviceStillConnected();
+    if (!connected || !connectedDevice) {
       Alert.alert('No printer connected');
+      console.warn('⚠️ No classic Bluetooth printer connected');
       return false;
     }
 
-    const printer = connectedDevice[0];
-    const encoded = Buffer.from(receipt, 'utf-8').toString('base64');
+    const lineFeed = '\n\n\n';
+    const finalReceipt = receipt + lineFeed;
 
-    await printer.writeCharacteristicWithResponseForService(
-      SERVICE_UUID,
-      CHARACTERISTIC_UUID,
-      encoded
-    );
+    console.log('📤 Sending receipt to printer...');
+    await connectedDevice.write(finalReceipt);
 
-    console.log('Receipt sent to printer');
+    console.log('✅ Receipt sent to printer successfully');
     return true;
   } catch (error) {
-    console.error('Failed to print receipt:', error);
+    console.error('❌ Failed to print receipt:', error);
     return false;
   }
 };
+
+export const formatReceipt = (transaction: any, paperWidth: '58' | '76' | '80' = '80'): string => {
+  if (!transaction) return '';
+
+  const { customer, services, totalWeight, totalPrice, createdAt, status } = transaction;
+
+  const lineWidths: Record<typeof paperWidth, number> = {
+    '58': 32,
+    '76': 40,
+    '80': 42,
+  };
+
+  const lineWidth = lineWidths[paperWidth];
+  const line = '-'.repeat(lineWidth);
+
+  const center = (text: string) => {
+    const space = Math.floor((lineWidth - text.length) / 2);
+    return ' '.repeat(space) + text;
+  };
+
+  const right = (text: string) => {
+    return text.padStart(lineWidth);
+  };
+
+  const formatServiceLine = (
+    name: string,
+    weight: number,
+    pricePerKg: number,
+    totalPrice: number
+  ) => {
+    const left = `${name} ${weight}kg @${pricePerKg}/kg`;
+    const rightPrice = `Rp${totalPrice.toLocaleString()}`;
+    if (left.length + rightPrice.length > lineWidth) {
+      return `${left}\n${right(rightPrice)}`;
+    } else {
+      const space = lineWidth - left.length - rightPrice.length;
+      return `${left}${' '.repeat(space)}${rightPrice}`;
+    }
+  };
+
+  const receipt =
+`${line}
+${center('RECEIPT PESANAN')}
+${line}
+Nama     : ${customer.name}
+No. Hp   : ${customer.phoneNumber}
+Alamat   : ${customer.address}
+
+Tanggal  : ${new Date(createdAt).toLocaleString()}
+Status   : ${status}
+${line}
+LAYANAN
+${line}
+${services
+  .map(
+    (service: any) =>
+      formatServiceLine(service.name, service.weight, service.pricePerKg, service.totalPrice)
+  )
+  .join('\n')}
+${line}
+Total Berat : ${totalWeight} kg
+Total Harga : Rp${totalPrice.toLocaleString()}
+${line}
+${center('TERIMA KASIH')}
+${line}
+\n\n\n`;
+
+  return receipt;
+};
+

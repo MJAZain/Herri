@@ -2,7 +2,7 @@ export const TransactionServiceSchema = {
     name: 'TransactionService',
     embedded: true,
     properties: {
-      serviceId: 'objectId', // Link back to Service
+      serviceId: 'objectId',
       name: 'string',
       pricePerKg: 'float',
       weight: 'float',

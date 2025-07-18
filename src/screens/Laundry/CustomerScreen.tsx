@@ -3,7 +3,7 @@ import { FlatList } from 'react-native';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../App';
-import { addOrUpdateCustomer, getAllCustomers } from '../../realm/helpers/customerHelper';
+import { addCustomer, getAllCustomers } from '../../realm/helpers/customerHelper';
 import Toast from '../../components/toast';
 
 type Customer = {
@@ -21,6 +21,7 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -35,11 +36,13 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const success = await addOrUpdateCustomer(customerName.trim(), phoneNumber.trim(), address.trim());
+    const success = await addCustomer(
+      customerName.trim(),
+      phoneNumber.trim(),
+      address.trim()
+    );
+
     if (success) {
-      setToastMessage('Customer details saved.');
-      setToastType('success');
-      setToastVisible(true);
       const updatedList = getAllCustomers();
       setCustomers(updatedList);
       setCustomerName('');
@@ -47,13 +50,12 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
       setAddress('');
       navigation.navigate('AddTransaction', { phoneNumber });
     } else {
-      setToastMessage('There was an issue saving the customer details.');
+      setToastMessage('Pelanggan Sudah ada.');
       setToastType('error');
       setToastVisible(true);
     }
   };
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
 
   useEffect(() => {
     const data = getAllCustomers();
@@ -66,11 +68,16 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Informasi Pelanggan</Text>
 
-      <TextInput
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Tambah Pelanggan</Text>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <TextInput
         style={styles.input}
         placeholder="Nama Pelanggan"
+        placeholderTextColor='rgba(44, 87, 140, 0.5)'
         value={customerName}
         onChangeText={setCustomerName}
       />
@@ -78,6 +85,7 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="No. Telp"
+        placeholderTextColor='rgba(44, 87, 140, 0.5)'
         value={phoneNumber}
         onChangeText={setPhoneNumber}
         keyboardType="phone-pad"
@@ -86,23 +94,37 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Alamat"
+        placeholderTextColor='rgba(44, 87, 140, 0.5)'
         value={address}
         onChangeText={setAddress}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Save Customer</Text>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          customerName && phoneNumber && address ? styles.buttonActive : null,
+        ]}
+        onPress={handleSubmit}
+        disabled={!(customerName && phoneNumber && address)}
+      >
+        <Text style={styles.buttonText}>Simpan Pelanggan</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>Pilih Pelanggan</Text>
-      <FlatList
+      </View>
+
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Pilih Pelanggan</Text>
+      </View>
+
+      <View style={styles.list}>
+        <FlatList
         data={customers}
         keyExtractor={(item) => item._id.toHexString()}
         renderItem={({ item }) => (
           <View style={styles.customerCard}>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text>{item.address}</Text>
-              <Text>{item.phoneNumber}</Text>
+              <Text style={styles.cell}>{item.address}</Text>
+              <Text style={styles.cell}>{item.phoneNumber}</Text>
             </View>
             <TouchableOpacity
               style={styles.selectButton}
@@ -113,6 +135,8 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         )}
       />
+      </View>
+      
       <Toast
         message={toastMessage}
         type={toastType}
@@ -124,47 +148,93 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: 'rgba(251, 247, 238, 1)',
+  },
+  list: {
+    padding: 8,
+  },
+  inputContainer: {
+    padding: 16,
+    backgroundColor: 'rgba(44, 87, 140, 1)',
+  },
+  header: {
+    backgroundColor: 'rgba(44, 87, 140, 1)',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 5,
+    zIndex: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    color: '#fff',
+    fontFamily: 'Lexend-Bold'
+  },
   input: {
-    borderColor: '#ccc',
+    backgroundColor: '#fff',
+    borderColor: 'rgba(44, 87, 140, 1)',
     borderWidth: 1,
-    padding: 12,
     borderRadius: 8,
+    padding: 12,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 3,
+    fontFamily: 'Lexend-Regular'
   },
   button: {
-    marginTop: 20,
-    backgroundColor: '#4dabf7',
+    backgroundColor: 'rgba(110, 134, 170, 1)',
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 3,
+  },
+  buttonActive: {
+    backgroundColor: 'rgba(255, 219, 137, 1)',
+  },
+  buttonText: {
+    color: 'rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Bold'
   },
   customerCard: {
+    backgroundColor: 'rgba(240, 248, 252, 0.9)',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    marginBottom: 10,
+    borderBottomWidth: 4,
+    borderColor: '#eee',
   },
   name: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Lexend-Bold',
+    color: '#2C578C',
   },
+  cell: { fontFamily: 'Lexend-Regular'},
   selectButton: {
-    backgroundColor: '#38b000',
+    backgroundColor: 'rgba(255, 219, 137, 1)',
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginLeft: 10,
+    paddingHorizontal: 16,
+    borderRadius: 6,
   },
   selectButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#000',
+    fontFamily: 'Lexend-Bold'
   },
-  buttonText: { color: '#fff', fontWeight: 'bold' },
 });
+
 
 export default CustomerInputScreen;

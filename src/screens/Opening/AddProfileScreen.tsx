@@ -6,13 +6,16 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  Alert,
 } from 'react-native'
 import { launchImageLibrary } from 'react-native-image-picker'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { RootStackParamList } from '../../../App'
 import { createUser } from '../../realm/helpers/userHelpers'
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+import BGSplash from '../../../assets/icons/splash/bgsplash.svg'
+import Toast from '../../components/toast'
 
 type AddProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddProfile'>
 
@@ -34,13 +37,32 @@ async function requestStoragePermission() {
 }
 
 export default function AddProfileScreen() {
+  const [isScreenReady, setIsScreenReady] = useState(false);
   const [name, setName] = useState('')
   const [shopName, setShopName] = useState('')
   const [imageUri, setImageUri] = useState<string | null>(null)
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
 
   const navigation = useNavigation<AddProfileScreenNavigationProp>()
 
-  const handlePickImage = () => {
+  useFocusEffect(
+    useCallback(() => {
+      setIsScreenReady(true);
+      return () => setIsScreenReady(false);
+    }, [])
+  );
+
+ const handlePickImage = () => {
+    if (!isScreenReady) return;
+
     launchImageLibrary(
       {
         mediaType: 'photo',
@@ -49,32 +71,40 @@ export default function AddProfileScreen() {
         quality: 0.8,
       },
       (response) => {
-        if (response.didCancel) return
+        if (response.didCancel) return;
+
         if (response.errorCode) {
-          Alert.alert('Error', response.errorMessage || 'Unknown error while picking image')
-          return
+          const errorMessage =
+            response.errorMessage || (response as Error)?.message || 'Unknown error while picking image';
+
+          showToast(errorMessage, 'error');
+          return;
         }
-        const selectedAsset = response.assets?.[0]
+
+        const selectedAsset = response.assets?.[0];
         if (selectedAsset?.uri) {
-          setImageUri(selectedAsset.uri)
+          setImageUri(selectedAsset.uri);
         }
       }
-    )
-  }
+    );
+  };
 
   const handleSave = () => {
     if (!name || !shopName) {
-      Alert.alert('Lengkapi Data', 'Nama dan Nama Toko harus diisi.')
-      return
+      showToast('Nama dan Nama Toko harus diisi.', 'error');
+      return;
     }
 
-    createUser(name, shopName, imageUri || '')
-    navigation.navigate('MainTabs')
-  }
+    createUser(name, shopName, imageUri || '');
+    navigation.navigate('MainTabs');
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Selamat datang di E-Herry Laundry</Text>
+      <BGSplash width="100%" height="100%" style={StyleSheet.absoluteFill} />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Selamat datang di Herri Laundry</Text>
+      </View>      
 
       <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
         {imageUri ? (
@@ -86,7 +116,8 @@ export default function AddProfileScreen() {
         )}
       </TouchableOpacity>
 
-      <Text style={styles.label}>Silahkan masukkan nama anda:</Text>
+      <View style={styles.containerInput}>
+        <Text style={styles.label}>Silahkan masukkan nama anda:</Text>
       <TextInput
         style={styles.input}
         placeholder="Nama Anda"
@@ -102,9 +133,16 @@ export default function AddProfileScreen() {
         onChangeText={setShopName}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSave}>
-        <Text style={styles.buttonText}>Simpan Profil</Text>
+      <TouchableOpacity style={styles.save} onPress={handleSave}>
+        <Text style={styles.savebutton}>Simpan Profil</Text>
       </TouchableOpacity>
+      </View>
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        visible={toastVisible}
+        onClose={() => setToastVisible(false)}
+      />
     </View>
   )
 }
@@ -112,18 +150,33 @@ export default function AddProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 24,
+    backgroundColor: 'rgba(251, 247, 238, 1)',
+  },
+    header: {
+    backgroundColor: 'rgba(44, 87, 140, 1)',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 5,
+    zIndex: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    color: '#fff',
+    fontFamily: 'Lexend-Bold'
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Lexend-Bold',
     textAlign: 'center',
     marginBottom: 20,
   },
   imageWrapper: {
     alignSelf: 'center',
-    marginBottom: 20,
+    margin: 16
   },
   image: {
     width: 100,
@@ -140,18 +193,37 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: '#999',
+    fontFamily: 'Lexend-Regular'
   },
   label: {
-    marginTop: 12,
-    marginBottom: 4,
-    fontSize: 14,
+    marginTop: 10,
+    fontFamily: 'Lexend-Bold',
+    color: 'rgb(0, 0, 0)'
+  },
+    savebutton: {
+    backgroundColor: 'rgba(44, 87, 140, 1)',
+    padding: 8,
+    borderRadius: 8,
+    alignSelf: 'center',
+    margin: 20,
+    color: 'rgba(251, 247, 238, 1)',
+    fontFamily: 'Lexend-Bold',
+  },
+  save: {
+    padding: 4
+  },
+  containerInput: {
+    margin: 16,
   },
   input: {
+    borderColor: '#ccc',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 10,
+    fontFamily: 'Lexend-Regular',
+    color: 'rgb(0, 0, 0)',
+    backgroundColor: 'rgb(255, 255, 255)',
   },
   button: {
     backgroundColor: '#4a90e2',

@@ -2,8 +2,9 @@ import React, { useEffect } from 'react'
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { RootStackParamList } from '../../../App' // Import RootStackParamList from App.tsx
+import { RootStackParamList } from '../../../App'
 import { getUser } from '../../realm/helpers/userHelpers'
+import TitleIcon from '../../../assets/icons/splash/icon.svg'
 
 type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>
 
@@ -31,8 +32,7 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Selamat datang di E-Herry Laundry</Text>
-      <ActivityIndicator size="large" color="#4a90e2" />
+      <TitleIcon width="50%" height="100%" preserveAspectRatio="xMidYMid meet" />
     </View>
   )
 }
@@ -40,14 +40,14 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(251, 247, 238, 1)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: 'Lexend-Bold',
     textAlign: 'center',
     marginBottom: 20,
   },

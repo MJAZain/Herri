@@ -11,13 +11,17 @@ import {
 import { BSON } from 'realm';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../App';
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { addTransaction } from '../../realm/helpers/transactionHelper';
 import { getAllServices } from '../../realm/helpers/serviceHelpers';
 import { getCustomerByPhoneNumber } from '../../realm/helpers/customerHelper';
+import Toast from '../../components/toast';
 
 type SelectedService = {
   _id: BSON.ObjectId;
   name: string;
+  description: string;
   pricePerKg: number;
   weight: string;
 };
@@ -26,31 +30,43 @@ type SelectedService = {
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTransaction'>;
 
 const TransactionScreen: React.FC<Props> = ({ route }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { phoneNumber } = route.params;
 
   const [services, setServices] = useState<SelectedService[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
 
   useEffect(() => {
-  // Fetch customer details by phoneNumber
   const customer = getCustomerByPhoneNumber(phoneNumber);
   if (customer) {
     setCustomerName(customer.name);
     setAddress(customer.address);
+    setPhone(customer.phoneNumber);
   }
 
   const serviceData = getAllServices();
   const mapped = serviceData.map((s) => ({
     _id: s._id as BSON.ObjectId,
-    name: s.name as string, // Type-casting name as string
-    pricePerKg: s.pricePerKg as number, // Type-casting pricePerKg as number
+    name: s.name as string,
+    description: s.description as string,
+    pricePerKg: s.pricePerKg as number,
     weight: '',
   }));
   setServices(mapped);
 
   return () => {
-    // Cleanup if needed
   };
 }, [phoneNumber]);
 
@@ -70,42 +86,59 @@ const TransactionScreen: React.FC<Props> = ({ route }) => {
           serviceId: s._id,
           name: s.name,
           pricePerKg: s.pricePerKg,
+          description: s.description,
           weight,
           totalPrice: weight * s.pricePerKg,
         };
       });
 
     if (!selectedServices.length) {
-      Alert.alert('Incomplete', 'Please select at least one service with weight.');
+      showToast('Data pesanan tidak lengkap', 'error');
       return;
     }
 
     addTransaction(customerName, phoneNumber, address, selectedServices);
 
-    Alert.alert('Success', 'Transaction saved!');
     setServices((prev) =>
       prev.map((s) => ({ ...s, weight: '' }))
     );
+   
+    navigation.navigate('MainTabs');
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>New Transaction</Text>
-      <Text>Name: {customerName}</Text>
-      <Text>Address: {address}</Text>
+  <View style={styles.container}>
+    <View style={styles.header}>
+      <Text style={styles.headerTitle}>Tambah Pesanan Baru</Text>
+    </View>
 
-      <Text style={styles.subTitle}>Select Services</Text>
+    <View style={styles.containerInfo}>
+      <Text style={styles.info}>Nama: {customerName}</Text>
+      <Text style={styles.info}>Alamat: {address}</Text>
+      <Text style={styles.info}>No. Hp: {phone}</Text>
+    </View>
+
+    <View style={styles.layanan}>
+      <Text style={styles.layananTitle}>Pilih Layanan</Text>
+    </View>
+
+ 
+    <View style={styles.flexList}>
       <FlatList
+        contentContainerStyle={styles.list} // keep padding here
         data={services}
         keyExtractor={(item) => item._id.toHexString()}
         renderItem={({ item, index }) => (
           <View style={styles.serviceRow}>
-            <Text style={styles.serviceName}>
-              {item.name} ({item.pricePerKg} per kg)
-            </Text>
+            <View>
+              <Text style={styles.cell}>{item.name}</Text>
+              <Text style={styles.cell}>{item.description}</Text>
+              <Text style={styles.cell}>({item.pricePerKg} per kg)</Text>
+            </View>
             <TextInput
               style={styles.weightInput}
-              placeholder="Weight"
+              placeholder="Berat"
+              placeholderTextColor='rgba(44, 87, 140, 0.5)'
               keyboardType="numeric"
               value={item.weight}
               onChangeText={(text) => handleWeightChange(index, text)}
@@ -113,18 +146,73 @@ const TransactionScreen: React.FC<Props> = ({ route }) => {
           </View>
         )}
       />
+    </View>
 
+    <View style={styles.buttonContainer}>
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Submit Transaction</Text>
+        <Text style={styles.buttonText}>Simpan Pesanan</Text>
       </TouchableOpacity>
     </View>
-  );
+
+    <Toast
+      message={toastMessage}
+      type={toastType}
+      visible={toastVisible}
+      onClose={() => setToastVisible(false)}
+    />
+  </View>
+);
+
 };
 
 const styles = StyleSheet.create({
+  flexList: {
+  flex: 1,
+},
+list: {
+  padding: 16,
+  paddingBottom: 100
+},
+header: {
+  paddingVertical: 16,
+  paddingHorizontal: 20,
+  backgroundColor: 'rgba(44, 87, 140, 1)',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.25,
+  shadowRadius: 2.8,
+  elevation: 5,
+  zIndex: 10,
+},
+containerInfo: {
+  padding: 16,
+  borderBottomWidth: 4,
+  borderColor: '#eee',
+},
+layanan: {
+  paddingVertical: 16,
+  paddingHorizontal: 20,
+  zIndex: 10,
+  borderBottomWidth: 4,
+  borderColor: '#eee',
+},
   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: 'rgba(251, 247, 238, 1)',
+  },
+  
+  info: {
+    fontFamily: 'Lexend-Bold'
+  },
+  headerTitle: {
+    fontSize: 20,
+    color: '#fff',
+    fontFamily: 'Lexend-Bold'
+  },
+  layananTitle: {
+    fontSize: 20,
+    color: 'rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Bold'
   },
   title: {
     fontSize: 22,
@@ -142,12 +230,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
-    borderBottomWidth: 1,
+    borderBottomWidth: 5,
     borderColor: '#eee',
   },
-  serviceName: {
-    flex: 2,
-    fontSize: 14,
+  cell: { 
+    paddingVertical: 5,
+    fontFamily: 'Lexend-Regular',
+    flex: 1
   },
   weightInput: {
     flex: 1,
@@ -156,17 +245,28 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 6,
     marginLeft: 10,
+    backgroundColor: '#fff',
+    maxWidth: '50%'
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderTopWidth: 1,
+    borderColor: '#eee',
   },
   button: {
-    marginTop: 20,
-    backgroundColor: '#4dabf7',
-    padding: 14,
+    backgroundColor: 'rgba(255, 219, 137, 1)',
+    padding: 16,
     borderRadius: 10,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: 'rgba(110, 134, 170, 1)',
+    fontFamily: 'Lexend-Bold'
   },
 });
 

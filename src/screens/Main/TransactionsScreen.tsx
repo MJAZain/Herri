@@ -1,170 +1,121 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { getAllTransactions, completeTransaction, cancelTransaction } from '../../realm/helpers/transactionHelper';
-import { BSON } from 'realm';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { getAllTransactions } from '../../realm/helpers/transactionHelper';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../../App';
+import Realm from 'realm';
 
-type TransactionStatus = 'pending' | 'waiting for pickup' | 'completed' | 'canceled';
+import TransactionBG from '../../../assets/icons/transactionicon/TransactionBG.svg'
 
-interface Transaction {
-  _id: BSON.ObjectId;
-  customerName: string;
-  totalPrice: number;
-  createdAt: Date;
-  status: TransactionStatus;
-}
+type Props = {
+  status: string | string[];
+  title: string;
+};
 
-const TransactionScreen = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<{ [key: string]: TransactionStatus }>({});
+const TransactionScreen: React.FC<Props> = ({ status, title }) => {
+  const [transactions, setTransactions] = useState<Realm.Results<Realm.Object> | any[]>([]);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
-    const results = getAllTransactions().filtered("status == 'pending' OR status == 'waiting for pickup'");
+    const realmResults = getAllTransactions();
+    const filterQuery = Array.isArray(status)
+      ? status.map((s) => `status == "${s}"`).join(' OR ')
+      : `status == "${status}"`;
 
-    const mapped = results.map((t) => ({
-      _id: t._id as BSON.ObjectId,
-      customerName: t.customerName as string,
-      totalPrice: t.totalPrice as number,
-      createdAt: t.createdAt as Date,
-      status: t.status as TransactionStatus,
-    }));
-    setTransactions(mapped);
+    const filtered = realmResults.filtered(filterQuery);
+    setTransactions([...filtered]);
 
-    results.addListener((collection) => {
-      const updated = collection.map((t) => ({
-        _id: t._id as BSON.ObjectId,
-        customerName: t.customerName as string,
-        totalPrice: t.totalPrice as number,
-        createdAt: t.createdAt as Date,
-        status: t.status as TransactionStatus,
-      }));
-      setTransactions(updated);
-    });
+    const listener = () => setTransactions([...filtered]);
+    filtered.addListener(listener);
 
-    return () => results.removeAllListeners();
-  }, []);
+    return () => filtered.removeListener(listener);
+  }, [status]);
 
-  const handleStatusChange = (id: BSON.ObjectId, status: TransactionStatus) => {
-    setSelectedStatus((prev) => ({ ...prev, [id.toHexString()]: status }));
-  };
-
-  const handleUpdateStatus = (id: BSON.ObjectId, status: TransactionStatus) => {
-    if (status === 'completed') {
-      const transaction = transactions.find(t => t._id.equals(id));
-      if (transaction) {
-        completeTransaction(id, transaction.totalPrice);
-        Alert.alert('Completed', 'Transaction marked as completed.');
-      }
-    } else if (status === 'canceled') {
-      cancelTransaction(id);
-      Alert.alert('Canceled', 'Transaction was canceled.');
-    }
-  };
-
-  const renderItem = ({ item }: { item: Transaction }) => {
-    const currentStatus = selectedStatus[item._id.toHexString()] || item.status;
-
-    return (
-      <View style={styles.item}>
-        <View>
-          <Text style={styles.name}>{item.customerName}</Text>
-          <Text style={styles.meta}>${item.totalPrice.toFixed(2)}</Text>
-          <Text style={styles.meta}>{item.createdAt.toLocaleDateString()}</Text>
-        </View>
-        <View style={styles.buttons}>
-          <Picker
-            selectedValue={currentStatus}
-            style={styles.picker}
-            onValueChange={(status: TransactionStatus) =>
-              handleStatusChange(item._id, status)
-            }
-          >
-            <Picker.Item label="Pending" value="pending" />
-            <Picker.Item label="Waiting for Pickup" value="waiting for pickup" />
-            <Picker.Item label="Completed" value="completed" />
-            <Picker.Item label="Canceled" value="canceled" />
-          </Picker>
-
-          <TouchableOpacity
-            style={[
-              styles.statusButton,
-              (currentStatus === 'completed' || currentStatus === 'canceled') && styles.glowingButton,
-            ]}
-            onPress={() => handleUpdateStatus(item._id, currentStatus)}
-          >
-            <Text style={styles.btnText}>Update</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+  const handlePress = (id: string) => {
+    navigation.navigate('TransactionDetail', { transactionId: id });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Pending & Waiting Transactions</Text>
+
+      <View style={[StyleSheet.absoluteFill]} pointerEvents="none">
+        <TransactionBG width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
+      </View>
+
+      <View style={styles.headerRow}>
+        <Text style={styles.headerText}>Nama</Text>
+        <Text style={styles.headerText}>Status</Text>
+        <Text style={styles.headerText}>Total</Text>
+        <Text style={styles.headerText}>Tanggal</Text>
+      </View>
+      
       <FlatList
         data={transactions}
         keyExtractor={(item) => item._id.toHexString()}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text>No transactions found.</Text>}
+        contentContainerStyle={{ paddingVertical: 6 }}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => handlePress(item._id.toHexString())}
+          >
+            <Text style={styles.cell}>{item.customer.name}</Text>
+            <Text style={styles.cell}>{item.status}</Text>
+            <Text style={styles.cell}>Rp {item.totalPrice.toLocaleString()}</Text>
+            <Text style={styles.cell}>{new Date(item.createdAt).toLocaleString()}</Text>
+          </TouchableOpacity>
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 2 }} />}
+        ListEmptyComponent={
+          <Text style={{ textAlign: 'center', marginTop: 20 }}>
+            Tidak ada transaksi dengan status {Array.isArray(status) ? status.join(', ') : status}.
+          </Text>
+        }
       />
     </View>
   );
 };
 
-export default TransactionScreen;
-
 const styles = StyleSheet.create({
-  container: {
+   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: 'rgba(251, 247, 238, 1)',
+    padding: 16
   },
-  header: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
+headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(110, 134, 170, 1)',
+    padding: 10,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 1.6,
+    elevation: 2,
+    marginBottom: 10,
+  },
+  headerText: {
+    flex: 1,
+    color: '#fff',
+    fontFamily: 'Lexend-Bold',
+    fontSize: 14,
+    textAlign: 'center',
   },
   item: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 14,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-    alignItems: 'center',
-  },
-  name: {
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  meta: {
-    color: '#555',
-    fontSize: 12,
-  },
-  buttons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  picker: {
-    height: 50,
-    width: 150,
-  },
-  statusButton: {
-    backgroundColor: '#2196F3',
-    padding: 8,
+    backgroundColor: 'rgba(240, 248, 252, 0.9)',
+    padding: 16,
     borderRadius: 8,
+    borderBottomWidth: 5,
+    borderColor: '#eee',
   },
-  glowingButton: {
-    backgroundColor: '#33b5e5',
-    borderColor: '#4FC3F7',
-    borderWidth: 2,
-    shadowColor: '#4FC3F7',
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 6,
-    shadowOpacity: 0.8,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 14,
+  cell: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Lexend-Regular'
   },
 });
+
+export default TransactionScreen;

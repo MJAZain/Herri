@@ -1,171 +1,278 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, } from 'react-native';
 import { BSON } from 'realm';
-import { useExpenses } from '../../realm/helpers/exspenseHelper';
+import { 
+  addExpenseType, 
+  getAllExpenseTypes, 
+  deleteExpenseType, 
+  editExpenseType,
+  ExpenseType 
+} from '../../realm/helpers/expenseTypeHelper';
+import { EditModal } from '../../components/EditModal';
+import Toast from '../../components/toast';
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
+const ExpenseTypeManagementScreen = () => {
+  const [expenseTypes, setExpenseTypes] = useState<{ _id: BSON.ObjectId; name: string }[]>([]);
+  const [expenseTypeName, setExpenseTypeName] = useState('');
+  const [selectedExpenseType, setSelectedExpenseType] = useState<ExpenseType | null>(null);
+  const [isEditModalVisible, setEditModalVisible] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-const ExpenseManagementScreen = () => {
-  const { expenses, deleteExpense, updateExpense } = useExpenses();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [editingExpenseId, setEditingExpenseId] = useState<BSON.ObjectId | null>(null);
-  const [editedTitle, setEditedTitle] = useState('');
-  const [editedAmount, setEditedAmount] = useState('');
-
-  const filteredExpenses = expenses.filter(exp =>
-    exp.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleDelete = (id: BSON.ObjectId) => {
-    Alert.alert('Konfirmasi', 'Hapus pengeluaran ini?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: () => deleteExpense(id),
-      },
-    ]);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
   };
 
-  const startEditing = (expense: any) => {
-    setEditingExpenseId(expense._id);
-    setEditedTitle(expense.title);
-    setEditedAmount(expense.amount.toString());
-  };
+  const isFormComplete = expenseTypeName.trim();
 
-  const handleUpdate = () => {
-    if (!editedTitle.trim() || !editedAmount.trim()) return;
+  useEffect(() => {
+    const results = getAllExpenseTypes();
 
-    updateExpense(editingExpenseId!, {
-      title: editedTitle.trim(),
-      amount: parseFloat(editedAmount),
+    const plainExpenseTypes = results.map((type) => ({
+      _id: type._id as BSON.ObjectId,
+      name: type.name as string,
+    }));
+
+    setExpenseTypes(plainExpenseTypes);
+
+    results.addListener((collection) => {
+      const updatedExpenseTypes = collection.map((type) => ({
+        _id: type._id as BSON.ObjectId,
+        name: type.name as string,
+      }));
+      setExpenseTypes(updatedExpenseTypes);
     });
 
-    setEditingExpenseId(null);
-    setEditedTitle('');
-    setEditedAmount('');
+    return () => {
+      results.removeAllListeners();
+    };
+  }, []);
+
+  const handleAddExpenseType = () => {
+    if (!isFormComplete) return;
+
+    addExpenseType(expenseTypeName.trim());
+
+    setExpenseTypeName('');
   };
 
-  const renderItem = ({ item }: any) => {
-    const isEditing = item._id.equals(editingExpenseId!);
-    return (
-      <View style={styles.itemRow}>
-        {isEditing ? (
-          <>
-            <TextInput
-              style={styles.inputInline}
-              value={editedTitle}
-              onChangeText={setEditedTitle}
-            />
-            <TextInput
-              style={styles.inputInline}
-              value={editedAmount}
-              onChangeText={setEditedAmount}
-              keyboardType="numeric"
-            />
-            <TouchableOpacity onPress={handleUpdate}>
-              <Text style={styles.updateButton}>✔</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemSub}>{formatCurrency(item.amount)}</Text>
-            </View>
-            <TouchableOpacity onPress={() => startEditing(item)}>
-              <Text style={styles.editButton}>Ubah</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(item._id)}>
-              <Text style={styles.deleteButton}>Hapus</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    );
-  };
+  const renderExpenseTypeItem = ({ item }: { item: ExpenseType }) => (
+  <View style={styles.expenseTypeRow}>
+    <Text style={styles.cell}>{item.name}</Text>
+
+    <TouchableOpacity
+      style={styles.editButton}
+      onPress={() => {
+        setSelectedExpenseType(item);
+        setEditModalVisible(true);
+      }}
+    >
+      <Text style={styles.editButtonText}>Edit</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.deleteButton}
+      onPress={() => deleteExpenseType(item._id)}
+    >
+      <Text style={styles.deleteButtonText}>Delete</Text>
+    </TouchableOpacity>
+  </View>
+);
+
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Manajemen Pengeluaran</Text>
-      <TextInput
-        style={styles.searchBar}
-        placeholder="Cari berdasarkan jenis pengeluaran..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Atur Jenis Pengeluaran</Text>
+      </View>
 
-      <FlatList
-        data={filteredExpenses}
-        keyExtractor={item => item._id.toHexString()}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.emptyText}>Tidak ada pengeluaran.</Text>}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Nama Pengeluaran"
+          placeholderTextColor='rgba(44, 87, 140, 0.5)'
+          value={expenseTypeName}
+          onChangeText={setExpenseTypeName}
+        />
+
+        <TouchableOpacity
+        style={[
+          styles.addButton,
+          isFormComplete ? styles.buttonActive : null, ,
+        ]}
+        onPress={handleAddExpenseType}
+        disabled={!isFormComplete}
+      >
+        <Text style={styles.addButtonText}>Tambah Jenis Pengeluaran</Text>
+      </TouchableOpacity>
+      </View>
+      
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Pengeluaran</Text>
+      </View>
+
+      <View style={styles.expenseContainer}>
+        <FlatList
+          data={expenseTypes}
+          keyExtractor={(item) => item._id.toHexString()}
+          renderItem={renderExpenseTypeItem}
+          ListEmptyComponent={<Text style={styles.list}>Belum ada jenis pengeluaran.</Text>}
+        />
+      </View>
+
+      {selectedExpenseType && (
+        <EditModal
+          visible={isEditModalVisible}
+          title="Edit Pengeluaran"
+          value={selectedExpenseType.name}
+          placeholder="Masukkan Nama Baru"
+          onClose={() => setEditModalVisible(false)}
+          onSave={(newName) => {
+            try {
+              editExpenseType(selectedExpenseType._id, newName);
+              showToast('Pengeluaran Berhasil Diedit!', 'success');
+            } catch (err) {
+              showToast((err as Error).message, 'error');
+            }
+          }}
+        />
+      )}
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        visible={toastVisible}
+        onClose={() => setToastVisible(false)}
       />
     </View>
   );
 };
 
-export default ExpenseManagementScreen;
-
 const styles = StyleSheet.create({
-  container: { padding: 16, flex: 1, backgroundColor: '#fff' },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
-  searchBar: {
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12,
+  list: {
+    fontFamily: 'Lexend-Regular', 
+    textAlign: 'center',
   },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomColor: '#eee',
-    borderBottomWidth: 1,
-    paddingVertical: 10,
+  buttonActive: {
+    backgroundColor: 'rgba(255, 219, 137, 1)',
   },
-  itemTitle: { fontSize: 16, fontWeight: '500' },
-  itemSub: { color: '#555', fontSize: 14 },
-  editButton: {
-    marginHorizontal: 10,
-    color: '#4dabf7',
-    fontWeight: '600',
+  expenseContainer: {
+    padding: 16,
+    flex: 4
+  },
+  inputContainer: {
+    padding: 16,
+    backgroundColor: 'rgba(44, 87, 140, 1)',
+    flex: 1
   },
   deleteButton: {
-    color: '#ff6b6b',
-    fontWeight: '600',
-  },
-  updateButton: {
-    color: '#2ecc71',
-    fontSize: 18,
-    fontWeight: 'bold',
-    paddingHorizontal: 8,
-  },
-  inputInline: {
-    borderColor: '#ccc',
-    borderWidth: 1,
+    backgroundColor: '#ff6b6b',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 8,
+    alignSelf: 'center',
+    marginLeft: 5,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontFamily: 'Lexend-Regular',
+  },
+  header: {
+    backgroundColor: 'rgba(44, 87, 140, 1)',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 5,
+    zIndex: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    color: '#fff',
+    fontFamily: 'Lexend-Bold',
+  },
+  container: {
     flex: 1,
   },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#888',
+  expenseTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: '#ddd',
   },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    fontFamily: 'Lexend-Regular',
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderColor: 'rgba(44, 87, 140, 1)',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 3,
+    color: 'rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Regular',
+  },
+  addButton: {
+    backgroundColor: 'rgba(110, 134, 170, 1)',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 3,
+  },
+  addButtonText: {
+    color: 'background: rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Bold'
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 10,
+    fontFamily: 'Lexend-Regular',
+  },
+  serviceRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  cell: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Lexend-Regular',
+  },
+  editButtonText: {
+    color: 'rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Regular',
+    marginHorizontal: 6,
+  },
+  editButton: {
+    color: '#007AFF',
+    paddingVertical: 5,
+    fontWeight: '600',
+    marginHorizontal: 6,
+    borderColor: 'rgba(44, 87, 140, 1)'
+  },
+
 });
+
+export default ExpenseTypeManagementScreen;

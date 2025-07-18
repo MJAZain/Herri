@@ -43,7 +43,6 @@ const Toast: React.FC<ToastProps> = ({ message, type, visible, onClose }) => {
 const styles = StyleSheet.create({
   toastContainer: {
     position: 'absolute',
-    bottom: 50,
     left: 20,
     right: 20,
     padding: 16,
@@ -51,6 +50,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
+    top: 20
   },
   successToast: {
     backgroundColor: '#4caf50',
