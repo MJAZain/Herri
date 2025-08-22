@@ -3,10 +3,8 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   Image,
   StyleSheet,
-  Alert,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView, 
@@ -18,7 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../../../App'
 import Modal from 'react-native-modal';
-import { UserCircleIcon } from 'react-native-heroicons/outline'
+import Toast from '../../components/toast';
+import { useCurrentUser } from '../../realm/helpers/userHelpers';
 
 import BGSplash from '../../../assets/icons/splash/bgsplash.svg'
 import DefaultPFPIcon from '../../../assets/icons/DefaultPFP.svg'
@@ -26,14 +25,19 @@ import DefaultPFPIcon from '../../../assets/icons/DefaultPFP.svg'
 type UserManagementScreenProp = NativeStackNavigationProp<RootStackParamList, 'UserManagement'>;
 
 const UserManagementScreen = () => {
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
     
   const [name, setName] = useState('');
   const [shopName, setShopName] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   const [isModalVisible, setModalVisible] = useState(false);
   const [deleteTimer, setDeleteTimer] = useState(5);
   const [deleteEnabled, setDeleteEnabled] = useState(false);
+  const currentUser = useCurrentUser();
 
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
 
@@ -42,13 +46,22 @@ const UserManagementScreen = () => {
     if (user) {
       setName(String(user.name));
       setShopName(String(user.shopName));
+      setShopAddress(String(user.shopAddress));
       setProfilePicture(user.profilePicture ? String(user.profilePicture) : null);
     }
   }, []);
 
-  const handleSave = () => {
-    editUser({ name, shopName, profilePicture });
-  };
+const handleSave = async () => {
+  const { success, message } = await editUser({
+    name: name,
+    shopName: shopName,
+    shopAddress: shopAddress
+  });
+  
+  setToastMessage(message);
+  setToastType(success ? 'success' : 'error');
+  setToastVisible(true);
+};
 
   const showDeleteModal = () => {
     setModalVisible(true);
@@ -73,20 +86,27 @@ const UserManagementScreen = () => {
    navigation.navigate('Splash')
   };
 
-  const handlePickImage = () => {
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        quality: 1,
-      },
-      (response) => {
-        const uri = response?.assets?.[0]?.uri;
-        if (typeof uri === 'string') {
-          setProfilePicture(uri);
+ const handlePickImage = () => {
+  launchImageLibrary(
+    {
+      mediaType: 'photo',
+      quality: 1,
+    },
+    async (response) => {
+      const uri = response?.assets?.[0]?.uri;
+      if (typeof uri === 'string') {
+        setProfilePicture(uri);
+
+        // Persist to realm
+        const result = await editUser({ profilePicture: uri });
+        if (!result.success) {
+          console.warn(result.message);
         }
       }
-    );
-  };
+    }
+  );
+};
+
 
   return (
     <View>
@@ -118,6 +138,9 @@ const UserManagementScreen = () => {
 
           <Text style={styles.label}>Nama Toko:</Text>
           <TextInput style={styles.input} value={shopName} onChangeText={setShopName} />
+
+          <Text style={styles.label}>Alamat Toko:</Text>
+          <TextInput style={styles.input} value={shopAddress} onChangeText={setShopAddress} />
 
           <TouchableOpacity style={styles.savebutton} onPress={handleSave}>
             <Text style={styles.save}>Simpan Perubahan</Text>
@@ -154,6 +177,13 @@ const UserManagementScreen = () => {
           </Modal>
         </ScrollView>
       </View>
+
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        visible={toastVisible}
+        onClose={() => setToastVisible(false)}
+      />
 
     </View>
   );

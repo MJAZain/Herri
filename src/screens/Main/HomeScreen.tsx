@@ -5,7 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import type { RootStackParamList } from '../../../App'
 import { useMonthlyFinance } from '../../realm/helpers/moneyreportHelper'
-import { getUser } from '../../realm/helpers/userHelpers'
+import { getUser, useCurrentUser } from '../../realm/helpers/userHelpers'
 import { useTransactionStats } from '../../realm/helpers/transactionReportHelper'
 
 import TransactionIcon from '../../../assets/icons/TransactionIcon.svg'
@@ -17,13 +17,8 @@ import HomeBG from '../../../assets/icons/homepage/HomeBG.svg'
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { earningsFormatted } = useMonthlyFinance()
-  const [user, setUser] = useState<any>(null)
   const { monthlyCount, completedCount, queueCount } = useTransactionStats();
-
-  useEffect(() => {
-    const currentUser = getUser()
-    setUser(currentUser)
-  }, [])
+  const currentUser = useCurrentUser();
 
   return (
     <View style={styles.container}>
@@ -35,11 +30,11 @@ export default function HomeScreen() {
 
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <Text style={styles.name}>{user?.name || 'Nama Pemilik'}</Text>
-          <Text style={styles.shop}>{user?.shopName || 'Nama Toko'}</Text>
+          <Text style={styles.name}>{currentUser?.name || 'Nama Pemilik'}</Text>
+          <Text style={styles.shop}>{currentUser?.shopName || 'Nama Toko'}</Text>
         </View>
-        {user?.profilePicture ? (
-          <Image source={{ uri: user.profilePicture }} style={styles.avatar} />
+        {currentUser?.profilePicture ? (
+          <Image source={{ uri: currentUser.profilePicture }} style={styles.avatar} />
         ) : (
           <DefaultPFPIcon style={styles.avatar} />
         )}
@@ -204,21 +199,21 @@ const styles = StyleSheet.create({
     color: '#000',
     fontFamily: 'Lexend-Regular',
   },
-  mainMenuContainer: {
-    backgroundColor: 'rgba(110, 134, 170, 1)',
-    width: 321,
-    height: 389,
-    borderRadius: 21,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 9.9,
-    elevation: 5,
-    position: 'absolute',
-    top: 366,
-    left: 41,
-  },
+ mainMenuContainer: {
+  backgroundColor: 'rgba(110, 134, 170, 1)',
+  width: 321,
+  height: 389,
+  borderRadius: 21,
+  padding: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.25,
+  shadowRadius: 9.9,
+  elevation: 5,
+  position: 'absolute',
+  bottom: -40,
+  alignSelf: 'center',
+},
   menuRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

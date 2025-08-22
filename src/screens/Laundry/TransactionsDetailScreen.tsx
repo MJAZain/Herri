@@ -91,15 +91,19 @@ const handlePrintReceipt = async () => {
             <Text style={styles.headerTitle}>Detail Pesanan</Text>
           </View>
           <View style={styles.receipt}>
-            <Text style={styles.label}>
-              Nama Pelanggan: <Text style={styles.value}>{transaction.customer.name}</Text>
-            </Text>
+  <View style={styles.indentedContainer}>
+    <Text style={styles.label}>Nama:</Text>
+       <View style={styles.textWrapper}>
+      <Text style={styles.indentedText}>{transaction.customer.name}</Text>
+    </View>
+  </View>
             <Text style={styles.label}>
               No. Hp: <Text style={styles.value}>{transaction.customer.phoneNumber}</Text>
             </Text>
-            <Text style={styles.label}>
-              Alamat: <Text style={styles.value}>{transaction.customer.address}</Text>
-            </Text>
+<View style={styles.indentedContainer}>
+    <Text style={styles.label}>Alamat:</Text>
+    <Text style={styles.indentedText}>{transaction.customer.address}</Text>
+  </View>
             <Text style={styles.label}>
               Tanggal: <Text style={styles.value}>{new Date(transaction.createdAt).toLocaleString()}</Text>
             </Text>
@@ -171,6 +175,26 @@ const styles = StyleSheet.create({
   receipt: {
     padding: 16,
   },
+indentedContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  label: { 
+    fontSize: 16, 
+    fontFamily: 'Lexend-Bold',
+    marginBottom: 10,
+  },
+  textWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  indentedText: {
+    fontSize: 16,
+    fontFamily: 'Lexend-Regular',
+    paddingLeft: 8,
+    lineHeight: 24,
+    flexShrink: 1,
+  },
   item: {
     fontFamily: 'Lexend-Regular'
   },
@@ -209,13 +233,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold', 
     marginBottom: 10 
   },
-  label: { 
-    fontSize: 16, 
-    fontFamily: 'Lexend-Bold',
-    marginVertical: 2 
-  },
   value: { 
     fontFamily: 'Lexend-Regular',
+    flex: 1
   },
   sectionTitle: { 
     fontSize: 18, 

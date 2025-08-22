@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native'
 import { launchImageLibrary } from 'react-native-image-picker'
-import { useNavigation } from '@react-navigation/native'
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { RootStackParamList } from '../../../App'
 import { createUser } from '../../realm/helpers/userHelpers'
@@ -40,6 +40,7 @@ export default function AddProfileScreen() {
   const [isScreenReady, setIsScreenReady] = useState(false);
   const [name, setName] = useState('')
   const [shopName, setShopName] = useState('')
+  const [shopAddress, setShopAddress] = useState('')
   const [imageUri, setImageUri] = useState<string | null>(null)
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -90,13 +91,18 @@ export default function AddProfileScreen() {
   };
 
   const handleSave = () => {
-    if (!name || !shopName) {
+    if (!name || !shopName || !shopAddress) {
       showToast('Nama dan Nama Toko harus diisi.', 'error');
       return;
     }
 
-    createUser(name, shopName, imageUri || '');
-    navigation.navigate('MainTabs');
+    createUser(name, shopName, shopAddress, imageUri || '');
+    navigation.dispatch(
+    CommonActions.reset({
+      index: 0,
+      routes: [{ name: 'MainTabs' }],
+    })
+  );
   };
 
   return (
@@ -131,6 +137,14 @@ export default function AddProfileScreen() {
         placeholder="Nama Toko"
         value={shopName}
         onChangeText={setShopName}
+      />
+
+      <Text style={styles.label}>Silahkan masukkan alamat toko anda:</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Alamat Toko"
+        value={shopAddress}
+        onChangeText={setShopAddress}
       />
 
       <TouchableOpacity style={styles.save} onPress={handleSave}>

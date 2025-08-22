@@ -4,6 +4,7 @@ export const UserSchema = {
       _id: 'objectId',
       name: 'string',
       shopName: 'string',
+      shopAddress: 'string',
       profilePicture: 'string?',
     },
     primaryKey: '_id',
