@@ -105,7 +105,7 @@ const handlePrintReceipt = async () => {
     <Text style={styles.indentedText}>{transaction.customer.address}</Text>
   </View>
             <Text style={styles.label}>
-              Tanggal: <Text style={styles.value}>{new Date(transaction.createdAt).toLocaleString()}</Text>
+              Tanggal: <Text style={styles.value}>{new Date(transaction.createdAt).toLocaleDateString()}</Text>
             </Text>
             <Text style={styles.label}>
               Status: <Text style={styles.value}>{transaction.status}</Text>

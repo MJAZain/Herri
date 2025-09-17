@@ -76,7 +76,7 @@ const SearchExpensesScreen: React.FC = () => {
           >
             <Text style={styles.cell}>{item.expenseType?.name ?? 'Unknown'}</Text>
             <Text style={styles.cell}>Rp {item.amount.toLocaleString()}</Text>
-            <Text style={styles.cell}>{new Date(item.date).toLocaleString()}</Text>
+            <Text style={styles.cell}>{new Date(item.date).toLocaleDateString()}</Text>
           </TouchableOpacity>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 2 }} />}

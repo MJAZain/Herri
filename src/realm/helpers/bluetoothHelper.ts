@@ -171,52 +171,43 @@ export const printReceipt = async (receipt: string): Promise<boolean> => {
   }
 };
 
-function wrapField(label: string, value: string, maxLineLength: number): string {
-  const labelPart = `${label} : `;
-  const indent = ' '.repeat(labelPart.length);
-  
-  // If empty value, just return the label
-  if (!value.trim()) return labelPart;
-
-  // If the entire value fits on one line with the label
-  if (labelPart.length + value.length <= maxLineLength) {
-    return labelPart + value;
-  }
-
-  const words = value.split(' ');
-  let lines: string[] = [];
-  let currentLine = labelPart; // Start with label for first line
-
-  for (const word of words) {
-    const availableWidth = lines.length > 0 ? maxLineLength - indent.length : maxLineLength;
-    const testLine = lines.length > 0 
-      ? indent + currentLine + ' ' + word 
-      : currentLine + ' ' + word;
-
-    if (testLine.length <= maxLineLength) {
-      currentLine = lines.length > 0 
-        ? currentLine + ' ' + word 
-        : currentLine + (currentLine === labelPart ? '' : ' ') + word;
-    } else {
-      lines.push(currentLine);
-      currentLine = indent + word;
-    }
-  }
-
-  // Add the last line
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines.join('\n');
-}
-
 interface IUser {
   _id: Realm.BSON.ObjectId;
   name: string;
   shopName: string;
   shopAddress: string;
   profilePicture?: string;
+}
+
+function wrapField(label: string, value: string, maxLineLength: number): string {
+  const labelPart = `${label}: `;
+  const indent = ' '.repeat(labelPart.length);
+
+  if (!value.trim()) return labelPart;
+
+  const words = value.split(/\s+/);
+  let lines: string[] = [];
+  let currentLine = labelPart;
+
+  for (const word of words) {
+    const prefix = lines.length > 0 ? indent : "";
+    const testLine = (lines.length > 0 ? currentLine + " " + word : currentLine + word);
+
+    if (prefix.length + testLine.length <= maxLineLength) {
+      currentLine = lines.length > 0
+        ? currentLine + " " + word
+        : currentLine + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+
+  if (currentLine) {
+    lines.push((lines.length > 0 ? indent : "") + currentLine);
+  }
+
+  return lines.join("\n");
 }
 
 export const formatReceipt = (
@@ -231,18 +222,8 @@ export const formatReceipt = (
     const users = realm.objects<IUser>('User');
     if (users.length > 0) {
       const firstUser = users[0];
-
-      if (firstUser.name && typeof firstUser.name === 'string') {
-        shopInfo.name = firstUser.name;
-      } else {
-        console.warn('shopName is missing or not a string in user object');
-      }
-
-      if (firstUser.shopAddress && typeof firstUser.shopAddress === 'string') {
-        shopInfo.address = firstUser.shopAddress;
-      } else {
-        console.warn('shopAddress is missing or not a string in user object');
-      }
+      if (typeof firstUser.name === 'string') shopInfo.name = firstUser.name;
+      if (typeof firstUser.shopAddress === 'string') shopInfo.address = firstUser.shopAddress;
     }
   } catch (error) {
     console.error('Error fetching shop info:', error);
@@ -260,8 +241,11 @@ export const formatReceipt = (
   const line = '='.repeat(lineWidth);
 
   const center = (text: string) => {
-    const space = Math.floor((lineWidth - text.length) / 2);
-    return ' '.repeat(space) + text;
+    if (text.length >= lineWidth) return text;
+    const totalPadding = lineWidth - text.length;
+    const left = Math.floor(totalPadding / 2);
+    const right = totalPadding - left;
+    return ' '.repeat(left) + text + ' '.repeat(right);
   };
 
   const right = (text: string) => {
@@ -274,53 +258,67 @@ export const formatReceipt = (
     pricePerKg: number,
     totalPrice: number
   ) => {
-    const left = `${name} ${weight}kg @${pricePerKg}/kg`;
-    const rightPrice = `Rp${totalPrice.toLocaleString()}`;
-    if (left.length + rightPrice.length > lineWidth) {
-      return `${left}\n${right(rightPrice)}`;
-    }
-    return `${left}${' '.repeat(lineWidth - left.length - rightPrice.length)}${rightPrice}`;
-  };
+    const leftPart = `${name} ${weight}kg @${pricePerKg}/kg`;
+    const rightPart = `Rp${totalPrice.toLocaleString()}`;
 
-  const wrapField = (label: string, value: string, width: number): string => {
-    return `${label}: ${value}`;
+    if (leftPart.length + rightPart.length > lineWidth) {
+      const wrappedLeft = wrapField('', leftPart, lineWidth - rightPart.length - 1);
+      const lines = wrappedLeft.split('\n');
+      return [
+        lines[0] + ' '.repeat(lineWidth - lines[0].length - rightPart.length) + rightPart,
+        ...lines.slice(1)
+      ].join('\n');
+    }
+
+    return `${leftPart}${' '.repeat(lineWidth - leftPart.length - rightPart.length)}${rightPart}`;
   };
 
   const initializePrinter = '\x1B\x40';
   const setSmallFont = '\x1B\x4D\x01';
-  const resetPrinter = '\x1B\x4D\x00';
+  const doubleHeight = '\x1B\x21\x10';
+  const resetPrinter = '\x1B\x21\x00';
+
+  const STRINGS = {
+    receiptTitle: 'RECEIPT PESANAN',
+    thanks: 'TERIMA KASIH',
+    layanan: 'LAYANAN',
+    nama: 'Nama',
+    alamat: 'Alamat',
+    phone: 'No. Hp',
+    tanggal: 'Tanggal',
+    status: 'Status',
+    totalBerat: 'Total Berat',
+    totalHarga: 'Total Harga'
+  };
 
   const receipt =
-`${initializePrinter}${setSmallFont}
+`${initializePrinter}${setSmallFont}${doubleHeight}
 ${line}
 ${center(shopInfo.name)}
-${shopInfo.address ? center(shopInfo.address) + '\n' : ''}
+${shopInfo.address ? center(shopInfo.address) + '\n' : ''}${line}
+${center(STRINGS.receiptTitle)}
 ${line}
-${center('RECEIPT PESANAN')}
-${line}
-${wrapField('Nama', customer.name, lineWidth)}
-${wrapField('Alamat', customer.address, lineWidth)}
-${wrapField('No. Hp', customer.phoneNumber, lineWidth)}
-${wrapField('Tanggal', new Date(createdAt).toLocaleDateString('id-ID', {
+${wrapField(STRINGS.nama, customer.name, lineWidth)}
+${wrapField(STRINGS.alamat, customer.address, lineWidth)}
+${wrapField(STRINGS.phone, customer.phoneNumber, lineWidth)}
+${wrapField(STRINGS.tanggal, new Date(createdAt).toLocaleDateString('id-ID', {
   day: '2-digit',
   month: 'long',
   year: 'numeric'
 }), lineWidth)}
-${wrapField('Status', status, lineWidth)}
+${wrapField(STRINGS.status, status, lineWidth)}
 ${line}
-${center('LAYANAN')}
+${center(STRINGS.layanan)}
 ${line}
-${services
-  .map(
-    (service: any) =>
-      formatServiceLine(service.name, service.weight, service.pricePerKg, service.totalPrice)
-  )
-  .join('\n')}
+${services.map(
+  (service: any) =>
+    formatServiceLine(service.name, service.weight, service.pricePerKg, service.totalPrice)
+).join('\n')}
 ${line}
-${wrapField('Total Berat', `${totalWeight} kg`, lineWidth)}
-${wrapField('Total Harga', `Rp${totalPrice.toLocaleString()}`, lineWidth)}
+${wrapField(STRINGS.totalBerat, `${totalWeight} kg`, lineWidth)}
+${wrapField(STRINGS.totalHarga, `Rp${totalPrice.toLocaleString()}`, lineWidth)}
 ${line}
-${center('TERIMA KASIH')}
+${center(STRINGS.thanks)}
 ${line}
 ${resetPrinter}
 \n\n\n`;

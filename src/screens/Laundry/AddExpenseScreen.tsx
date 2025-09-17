@@ -101,6 +101,16 @@ const AddExpenseScreen = () => {
         <Text style={styles.headerTitle}>Tambah Pengeluaran</Text>
       </View>
 
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Pilih Jenis Pengeluaran</Text>
+      </View>
+      <FlatList
+        data={expenseTypes}
+        keyExtractor={(item) => item._id.toHexString()}
+        renderItem={renderTypeItem}
+        ListEmptyComponent={<Text>Belum ada Jenis Pengeluaran.</Text>}
+      />
+
       <View style={styles.inputContainer}>
         <TextInput
         style={styles.input}
@@ -111,16 +121,6 @@ const AddExpenseScreen = () => {
         keyboardType="decimal-pad"
       />
       </View>
-
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pilih Jenis Pengeluaran</Text>
-      </View>
-      <FlatList
-        data={expenseTypes}
-        keyExtractor={(item) => item._id.toHexString()}
-        renderItem={renderTypeItem}
-        ListEmptyComponent={<Text>Belum ada Jenis Pengeluaran.</Text>}
-      />
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -151,10 +151,12 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 9,
+    
   },
   inputContainer: {
     padding: 16,
     backgroundColor: 'rgba(44, 87, 140, 1)',
+    paddingBottom: 100
   },
   header: {
     backgroundColor: 'rgba(44, 87, 140, 1)',
