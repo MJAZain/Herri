@@ -38,7 +38,7 @@ useEffect(() => {
     const fetchedTransaction = await getTransactionById(transactionId);
     setTransaction(fetchedTransaction);
 
-    const savedWidth = await AsyncStorage.getItem('PAPER_WIDTH');
+    const savedWidth = await AsyncStorage.getItem('PAPER_WIDTH_KEY');
     if (savedWidth === '58' || savedWidth === '76' || savedWidth === '80') {
       setPaperWidth(savedWidth);
     }
@@ -50,15 +50,13 @@ useEffect(() => {
 const handlePrintReceipt = async () => {
   if (!transaction) return;
 
-  const receipt = formatReceipt(transaction, paperWidth);
-  const success = await printReceipt(receipt);
+  const success = await printReceipt(transaction);
 
   showToast(
     success ? 'Receipt printed successfully!' : 'Failed to print the receipt.',
     success ? 'success' : 'error'
   );
 };
-
 
   const handleStatusUpdate = (newStatus: 'pending'|'waiting for pickup'|'completed'|'canceled') => {
   try {
@@ -105,7 +103,7 @@ const handlePrintReceipt = async () => {
     <Text style={styles.indentedText}>{transaction.customer.address}</Text>
   </View>
             <Text style={styles.label}>
-              Tanggal: <Text style={styles.value}>{new Date(transaction.createdAt).toLocaleDateString()}</Text>
+              Tanggal: <Text style={styles.value}>{new Date(transaction.createdAt).toLocaleDateString('en-GB')}</Text>
             </Text>
             <Text style={styles.label}>
               Status: <Text style={styles.value}>{transaction.status}</Text>

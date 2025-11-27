@@ -47,6 +47,7 @@ export const EditModal: React.FC<EditModalProps> = ({
             onChangeText={setText}
             placeholder={placeholder}
             autoFocus
+            maxLength={20}
           />
           <View style={styles.buttonRow}>
             <TouchableOpacity onPress={onClose} style={styles.button}>

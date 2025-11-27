@@ -54,15 +54,16 @@ export function addCustomer(
 }
 
 export function updateCustomer(
-  phoneNumber: string,
-  updatedFields: Partial<Pick<Customer, 'name' | 'address'>>
+  id: string | Realm.BSON.ObjectId,
+  updatedFields: Partial<Pick<Customer, 'name' | 'address' | 'phoneNumber'>>
 ): boolean {
   const realm = getRealm();
 
   try {
-    const customer = realm
-      .objects<Customer>('Customer')
-      .filtered('phoneNumber == $0', phoneNumber)[0];
+    // Convert string ID to ObjectId if needed
+    const objectId = typeof id === 'string' ? new Realm.BSON.ObjectId(id) : id;
+    
+    const customer = realm.objectForPrimaryKey<Customer>('Customer', objectId);
 
     if (!customer) {
       console.warn('Customer not found for update.');
@@ -72,6 +73,7 @@ export function updateCustomer(
     realm.write(() => {
       if (updatedFields.name) customer.name = updatedFields.name;
       if (updatedFields.address) customer.address = updatedFields.address;
+      if (updatedFields.phoneNumber) customer.phoneNumber = updatedFields.phoneNumber;
     });
 
     return true;
@@ -80,7 +82,6 @@ export function updateCustomer(
     return false;
   }
 }
-
 export function deleteCustomer(id: BSON.ObjectId): void {
   const realm = getRealm();
 

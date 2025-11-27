@@ -5,6 +5,7 @@ export const UserSchema = {
       name: 'string',
       shopName: 'string',
       shopAddress: 'string',
+      shopPhone: 'string',
       profilePicture: 'string?',
     },
     primaryKey: '_id',

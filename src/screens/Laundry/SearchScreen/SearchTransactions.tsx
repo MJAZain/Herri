@@ -81,7 +81,7 @@ const SearchTransactionsScreen: React.FC = () => {
             <Text style={styles.cell}>{item.status ?? 'No status'}</Text>
             <Text style={styles.cell}>Rp {item.totalPrice?.toLocaleString?.() ?? 0}</Text>
             <Text style={styles.cell}>
-              {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'No date'}
+              {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'No date'}
             </Text>
           </TouchableOpacity>
         )}

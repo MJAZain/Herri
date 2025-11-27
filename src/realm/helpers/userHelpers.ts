@@ -8,7 +8,7 @@ export function getUser() {
   return users.length > 0 ? users[0] : null;
 }
 
-export function createUser(name: string, shopName: string, shopAddress: string, profilePicture?: string) {
+export function createUser(name: string, shopName: string, shopAddress: string, shopPhone: string, profilePicture?: string) {
   const realm = getRealm();
   try {
     realm.write(() => {
@@ -17,6 +17,7 @@ export function createUser(name: string, shopName: string, shopAddress: string, 
         name,
         shopName,
         shopAddress,
+        shopPhone,
         profilePicture: profilePicture ?? '',
       });
     });
@@ -46,6 +47,7 @@ type UpdateUserInput = {
   name?: string;
   shopName?: string;
   shopAddress?: string;
+  shopPhone?: string;
   profilePicture?: string | null;
 };
 
@@ -69,6 +71,9 @@ export const editUser = async (updatedFields: UpdateUserInput) => {
         if (updatedFields.hasOwnProperty('shopAddress')) {
           user.shopAddress = updatedFields.shopAddress;
         }
+        if (updatedFields.hasOwnProperty('shopPhone')) {
+          user.shopPhone = updatedFields.shopPhone;
+        }
         if ('profilePicture' in updatedFields) {
           user.profilePicture = updatedFields.profilePicture;
         }
@@ -89,6 +94,7 @@ type User = {
   name: string;
   shopName: string;
   shopAddress: string;
+  shopPhone: string;
   profilePicture?: string | null;
 };
 

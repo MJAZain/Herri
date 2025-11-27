@@ -54,18 +54,20 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <Text style={styles.title}>Edit Service</Text>
+          <Text style={styles.title}>Edit Layanan</Text>
 
           <TextInput
-            placeholder="Name"
+          placeholder="Nama Layanan (Maks 20 Karakter)"
+          maxLength={20}
             style={styles.input}
             value={name}
             onChangeText={setName}
           />
           <TextInput
-            placeholder="Description"
+            placeholder="Deskripsi"
             style={styles.input}
             value={description}
+            multiline={true}
             onChangeText={setDescription}
           />
           <TextInput
@@ -78,10 +80,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
           <View style={styles.buttonRow}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.cancelText}>Batal</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.buttonText}>Save</Text>
+              <Text style={styles.buttonText}>Simpan</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -104,33 +106,47 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 12,
+    fontFamily: 'Lexend-Regular'
   },
   input: {
-    borderBottomWidth: 1,
+ backgroundColor: '#fff',
+    borderColor: 'rgba(44, 87, 140, 1)',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 3,
+    color: 'rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Regular'
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 16,
+  },
+  cancelText: {
+    fontSize: 16,
+    fontFamily: 'Lexend-Regular',
+    padding: 6,
   },
   cancelButton: {
-    marginRight: 12,
+    marginLeft: 12,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    marginLeft: 12,
   },
   buttonText: {
-    color: 'white',
+    color: 'rgba(44, 87, 140, 1)',
+    fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Lexend-Regular',
+    padding: 6
   },
 });
 

@@ -137,8 +137,9 @@ const ServiceManagementScreen = () => {
       <View style={styles.containerService}>
         <TextInput
           style={styles.input}
-          placeholder="Nama Layanan"
-          placeholderTextColor='rgba(44, 87, 140, 0.5)'
+          placeholder="Nama Layanan (Maks 20 Karakter)"
+          placeholderTextColor="rgba(44, 87, 140, 0.5)"
+          maxLength={20}
           value={name}
           onChangeText={setName}
         />
@@ -146,6 +147,7 @@ const ServiceManagementScreen = () => {
           style={styles.input}
           placeholder="Deskripsi"
           placeholderTextColor='rgba(44, 87, 140, 0.5)'
+          multiline={true}
           value={description}
           onChangeText={setDescription}
         />

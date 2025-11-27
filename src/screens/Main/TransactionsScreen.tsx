@@ -62,7 +62,7 @@ const TransactionScreen: React.FC<Props> = ({ status, title }) => {
             <Text style={styles.cell}>{item.customer.name}</Text>
             <Text style={styles.cell}>{item.status}</Text>
             <Text style={styles.cell}>Rp {item.totalPrice.toLocaleString()}</Text>
-            <Text style={styles.cell}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+            <Text style={styles.cell}>{new Date(item.createdAt).toLocaleDateString('en-GB')}</Text>
           </TouchableOpacity>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 2 }} />}

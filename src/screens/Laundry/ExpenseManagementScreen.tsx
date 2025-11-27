@@ -92,8 +92,9 @@ const ExpenseTypeManagementScreen = () => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Nama Pengeluaran"
-          placeholderTextColor='rgba(44, 87, 140, 0.5)'
+          placeholder="Nama Pengeluaran (Maks 20 Karakter)"
+          placeholderTextColor="rgba(44, 87, 140, 0.5)"
+          maxLength={20}
           value={expenseTypeName}
           onChangeText={setExpenseTypeName}
         />
@@ -128,7 +129,7 @@ const ExpenseTypeManagementScreen = () => {
           visible={isEditModalVisible}
           title="Edit Pengeluaran"
           value={selectedExpenseType.name}
-          placeholder="Masukkan Nama Baru"
+          placeholder="Edit Nama Pengeluaran"
           onClose={() => setEditModalVisible(false)}
           onSave={(newName) => {
             try {

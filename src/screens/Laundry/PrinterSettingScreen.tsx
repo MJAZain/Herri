@@ -22,7 +22,7 @@ const PrinterSettingsScreen: React.FC = () => {
   const [pairedDevices, setPairedDevices] = useState<BluetoothDevice[]>([]);
   const [connectedPrinter, setConnectedPrinter] = useState<BluetoothDevice | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [paperWidth, setPaperWidth] = useState<'58' | '76' | '80'>('80');
+  const [paperWidth, setPaperWidth] = useState<'58' | '76' | '80' | null>(null);
 
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -34,7 +34,6 @@ const PrinterSettingsScreen: React.FC = () => {
     setToastVisible(true);
   };
 
-  // 👇 move this OUTSIDE useEffect so it can be called anywhere
 const checkConnectionAndFetch = async () => {
   const device = getConnectedDevice();
   if (device) {
@@ -63,9 +62,9 @@ const checkConnectionAndFetch = async () => {
     if (device) {
       console.log(`[DEBUG] Successfully connected to: ${deviceId}`);
       setConnectedPrinter(device);
-      showToast('Printer connected!', 'success');
+      showToast('Printer berhasil terhubung!', 'success');
     } else {
-      showToast('Failed to connect to printer.', 'error');
+      showToast('Gagal terhubung dengan printer.', 'error');
     }
   };
 
@@ -76,16 +75,15 @@ const handleDisconnect = async () => {
     if (success) {
       console.log('[DEBUG] Successfully disconnected printer');
       setConnectedPrinter(null);
-      showToast('Printer disconnected!', 'success');
+      showToast('Printer diputus!', 'success');
 
       checkConnectionAndFetch();
 
     } else {
-      showToast('Failed to disconnect printer.', 'error');
+      showToast('Gagal memutus printer.', 'error');
     }
   } catch (error) {
     console.error('[ERROR] Error while disconnecting printer:', error);
-    showToast('An unexpected error occurred while disconnecting.', 'error');
   }
 };
 
@@ -103,19 +101,36 @@ const handleDisconnect = async () => {
   };
 
 useEffect(() => {
-  const debug = async () => {
-    const value = await AsyncStorage.getItem('PAPER_WIDTH');
-    console.log('Stored PAPER_WIDTH:', value);
+  const init = async () => {
+    try {
+      const savedWidth = await getSavedPaperWidth();
+      if (savedWidth) {
+        setPaperWidth(savedWidth);
+      } else {
+        setPaperWidth('80');
+      }
+    } catch (err) {
+      console.error('[ERROR] Failed to load saved width:', err);
+      setPaperWidth('80');
+    }
+
+    await checkConnectionAndFetch();
   };
 
-  debug();
-
-  checkConnectionAndFetch();
-
+  init();
 }, []);
 
 
-  const renderPaperWidthOptions = () => {
+ const renderPaperWidthOptions = () => {
+  // Don’t render anything until the value is loaded
+  if (!paperWidth) {
+    return (
+      <View style={styles.paperWidthContainer}>
+        <Text style={styles.text}>Loading paper width…</Text>
+      </View>
+    );
+  }
+
   const options = [
     { label: '57/58 mm', value: '58' },
     { label: '76 mm', value: '76' },
@@ -124,37 +139,41 @@ useEffect(() => {
 
   return (
     <View style={styles.paperWidthContainer}>
-      <Text style={styles.text}>Select paper width:</Text>
+      <Text style={styles.text}>Pilih ukuran kertas:</Text>
       <View style={styles.optionsRow}>
-        {options.map((opt) => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[
-              styles.optionButton,
-              paperWidth === opt.value && styles.optionButtonSelected,
-            ]}
+        {options.map((opt) => {
+          const isSelected = paperWidth === opt.value;
+
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[
+                styles.optionButton,
+                isSelected && styles.optionButtonSelected,
+              ]}
               onPress={() => {
                 const newWidth = opt.value as typeof paperWidth;
                 setPaperWidth(newWidth);
-                savePaperWidth(newWidth).then(() => {
-                  showToast(`Paper width set to ${opt.label}`, 'success');
-                }).catch((err) => {
-                  console.error(err);
-                  showToast(`Failed to save paper width`, 'error');
-                });
+                savePaperWidth(newWidth)
+                  .then(() => showToast(`Ukuran diubah menjadi ${opt.label}`, 'success'))
+                  .catch((err) => {
+                    console.error(err);
+                    showToast('Gagal mengubah ukuran', 'error');
+                  });
               }}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                paperWidth === opt.value && styles.optionTextSelected,
-              ]}
+              disabled={!paperWidth}
             >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-
-        ))}
+              <Text
+                style={[
+                  styles.optionText,
+                  isSelected && styles.optionTextSelected,
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -162,7 +181,7 @@ useEffect(() => {
 
   const renderDeviceItem = ({ item }: { item: BluetoothDevice }) => (
     <View style={styles.deviceItem}>
-      <Text style={styles.deviceText}>{item.name || 'Unnamed Device'}</Text>
+      <Text style={styles.deviceText}>{item.name || 'Perangkat takbernama'}</Text>
       <TouchableOpacity style={styles.button} onPress={() => handleConnect(item.id)}>
         <Text style={styles.buttonText}>Connect</Text>
       </TouchableOpacity>
@@ -178,7 +197,7 @@ useEffect(() => {
       {connectedPrinter ? (
         <View style={styles.containerPrinter}>
           <Text style={styles.text}>
-            Currently connected to: {connectedPrinter.name ?? connectedPrinter.id}
+            Terkoneksi ke Alat: {connectedPrinter.name ?? connectedPrinter.id}
           </Text>
           {renderPaperWidthOptions()}
           <TouchableOpacity style={styles.button} onPress={handleDisconnect}>
@@ -193,7 +212,7 @@ useEffect(() => {
           keyExtractor={(item) => item.id}
           renderItem={renderDeviceItem}
           ListEmptyComponent={
-            <Text style={styles.containerPrinter}>No Bluetooth devices found.</Text>
+            <Text style={styles.containerPrinter}>Perangkat tidak bisa ditemukan.</Text>
           }
         />
       )}

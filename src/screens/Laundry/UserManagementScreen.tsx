@@ -32,6 +32,7 @@ const UserManagementScreen = () => {
   const [name, setName] = useState('');
   const [shopName, setShopName] = useState('');
   const [shopAddress, setShopAddress] = useState('');
+  const [shopPhone, setShopPhone] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   const [isModalVisible, setModalVisible] = useState(false);
@@ -47,6 +48,7 @@ const UserManagementScreen = () => {
       setName(String(user.name));
       setShopName(String(user.shopName));
       setShopAddress(String(user.shopAddress));
+      setShopPhone(String(user.shopPhone));
       setProfilePicture(user.profilePicture ? String(user.profilePicture) : null);
     }
   }, []);
@@ -55,7 +57,8 @@ const handleSave = async () => {
   const { success, message } = await editUser({
     name: name,
     shopName: shopName,
-    shopAddress: shopAddress
+    shopAddress: shopAddress,
+    shopPhone: shopPhone
   });
   
   setToastMessage(message);
@@ -134,13 +137,24 @@ const handleSave = async () => {
           </View>
 
           <Text style={styles.label}>Nama:</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} />
+          <TextInput style={styles.input} value={name} onChangeText={setName} maxLength={20} 
+            placeholder="Nama Anda (Maks 20 Karakter)"
+            placeholderTextColor='rgba(44, 87, 140, 0.5)'/>
 
           <Text style={styles.label}>Nama Toko:</Text>
-          <TextInput style={styles.input} value={shopName} onChangeText={setShopName} />
+          <TextInput style={styles.input} value={shopName} onChangeText={setShopName} maxLength={20} 
+          placeholder="Nama Toko Anda (Maks 20 Karakter)"
+            placeholderTextColor='rgba(44, 87, 140, 0.5)'/>
 
           <Text style={styles.label}>Alamat Toko:</Text>
-          <TextInput style={styles.input} value={shopAddress} onChangeText={setShopAddress} />
+          <TextInput style={styles.input} value={shopAddress} onChangeText={setShopAddress}
+          placeholder="Alamat Toko Anda"
+            placeholderTextColor='rgba(44, 87, 140, 0.5)' />
+          
+          <Text style={styles.label}>No. Telp Toko:</Text>
+          <TextInput style={styles.input} value={shopPhone} onChangeText={setShopPhone} keyboardType="phone-pad" 
+          placeholder="No. Telp Toko Anda"
+            placeholderTextColor='rgba(44, 87, 140, 0.5)'/>
 
           <TouchableOpacity style={styles.savebutton} onPress={handleSave}>
             <Text style={styles.save}>Simpan Perubahan</Text>

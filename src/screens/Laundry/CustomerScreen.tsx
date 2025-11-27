@@ -76,7 +76,8 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.inputContainer}>
         <TextInput
         style={styles.input}
-        placeholder="Nama Pelanggan"
+        placeholder="Nama Pelanggan (Maks 20 Karakter)"
+        maxLength={20}
         placeholderTextColor='rgba(44, 87, 140, 0.5)'
         value={customerName}
         onChangeText={setCustomerName}
@@ -85,6 +86,7 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="No. Telp"
+        maxLength={20}
         placeholderTextColor='rgba(44, 87, 140, 0.5)'
         value={phoneNumber}
         onChangeText={setPhoneNumber}
@@ -93,7 +95,8 @@ const CustomerInputScreen: React.FC<Props> = ({ navigation }) => {
 
       <TextInput
         style={styles.input}
-        placeholder="Alamat"
+        placeholder="Alamat (Maks 100 Karakter)"
+        maxLength={100}
         placeholderTextColor='rgba(44, 87, 140, 0.5)'
         value={address}
         onChangeText={setAddress}

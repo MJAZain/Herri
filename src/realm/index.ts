@@ -22,7 +22,7 @@ export const schemas = [
 ];
 
 let realmInstance: Realm | null = null;
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const onMigration = (oldRealm: Realm, newRealm: Realm) => {
   if (oldRealm.schemaVersion < SCHEMA_VERSION) {

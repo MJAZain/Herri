@@ -5,7 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
+  StyleSheet, 
+  Modal
 } from 'react-native';
 import { BSON } from 'realm';
 import {
@@ -25,6 +26,9 @@ const CustomerManagementScreen = () => {
   const [isEditModalVisible, setEditModalVisible] = useState(false);
   const [customers, setCustomers] = useState<BasicCustomer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<BasicCustomer | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
+  const [editAddress, setEditAddress] = useState('');
 
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -58,6 +62,32 @@ const CustomerManagementScreen = () => {
     }
   };
 
+  const handleEditCustomer = () => {
+    if (!selectedCustomer) return;
+
+    const updated = updateCustomer(selectedCustomer._id, {
+      name: editName.trim(),
+      phoneNumber: editPhoneNumber.trim(),
+      address: editAddress.trim()
+    });
+
+    if (updated) {
+      showToast('Berhasil Update Pelanggan!', 'success');
+      setCustomers(getAllCustomers());
+      setEditModalVisible(false);
+    } else {
+      showToast('Update Gagal.', 'error');
+    }
+  };
+
+  const openEditModal = (customer: BasicCustomer) => {
+    setSelectedCustomer(customer);
+    setEditName(customer.name);
+    setEditPhoneNumber(customer.phoneNumber);
+    setEditAddress(customer.address);
+    setEditModalVisible(true);
+  };
+
   const renderCustomerItem = ({ item }: { item: BasicCustomer }) => (
     <View style={styles.customerRow}>
       <View style={styles.infoColumn}>
@@ -69,10 +99,7 @@ const CustomerManagementScreen = () => {
       <View style={styles.actionColumn}>
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => {
-            setSelectedCustomer(item);
-            setEditModalVisible(true);
-          }}
+          onPress={() => openEditModal(item)}
         >
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
@@ -100,23 +127,27 @@ const CustomerManagementScreen = () => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Nama"
           value={name}
-          placeholderTextColor='rgba(44, 87, 140, 0.5)'
+          placeholder="Nama (Maks 20 Karakter)"
+          placeholderTextColor="rgba(44, 87, 140, 0.5)"
+          maxLength={20}
           onChangeText={setName}
         />
+
         <TextInput
           style={styles.input}
-          placeholder="Phone Number"
           value={phoneNumber}
           onChangeText={setPhoneNumber}
+          placeholder="No. Telp"
           placeholderTextColor='rgba(44, 87, 140, 0.5)'
           keyboardType="phone-pad"
         />
         <TextInput
           style={styles.input}
-          placeholder="Address"
+          placeholder="Alamat (Maks 100 Karakter)"
           placeholderTextColor='rgba(44, 87, 140, 0.5)'
+          maxLength={100}
+          multiline={true}
           value={address}
           onChangeText={setAddress}
         />
@@ -143,26 +174,64 @@ const CustomerManagementScreen = () => {
         />
       </View>
 
-      {selectedCustomer && (
-        <EditModal
-          visible={isEditModalVisible}
-          title="Edit Customer"
-          value={selectedCustomer.name}
-          placeholder="Enter new name"
-          onClose={() => setEditModalVisible(false)}
-          onSave={(newName) => {
-            const updated = updateCustomer(selectedCustomer.phoneNumber, {
-              name: newName,
-            });
-            if (updated) {
-              showToast('Customer updated!', 'success');
-              setCustomers(getAllCustomers());
-            } else {
-              showToast('Update failed.', 'error');
-            }
-          }}
-        />
-      )}
+      {/* Edit Modal */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Pelanggan</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              value={editName}
+              placeholder="Nama"
+              placeholderTextColor="rgba(44, 87, 140, 0.5)"
+              maxLength={20}
+              onChangeText={setEditName}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              value={editPhoneNumber}
+              onChangeText={setEditPhoneNumber}
+              placeholder="No. Telp"
+              placeholderTextColor='rgba(44, 87, 140, 0.5)'
+              keyboardType="phone-pad"
+            />
+
+            <TextInput
+              style={[styles.modalInput, styles.multilineInput]}
+              placeholder="Alamat"
+              maxLength={100}
+              placeholderTextColor='rgba(44, 87, 140, 0.5)'
+              multiline={true}
+              value={editAddress}
+              onChangeText={setEditAddress}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleEditCustomer}
+                disabled={!editName.trim() || !editPhoneNumber.trim() || !editAddress.trim()}
+              >
+                <Text style={styles.saveButtonText}>Simpan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Toast
         message={toastMessage}
@@ -175,6 +244,61 @@ const CustomerManagementScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalContent: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+  fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    fontFamily: 'Lexend-Regular'
+  },
+  modalInput: {
+    backgroundColor: '#fff',
+    borderColor: 'rgba(44, 87, 140, 1)',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2.8,
+    elevation: 3,
+    color: 'rgba(44, 87, 140, 1)',
+    fontFamily: 'Lexend-Regular'
+  },
+  multilineInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 15,
+  },
+  modalButton: {
+marginLeft: 12
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontFamily: 'Lexend-Regular',
+  },
+  saveButtonText: {
+    color: 'rgba(44, 87, 140, 1)',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Lexend-Regular',
+  },
   infoColumn: {
     flex: 1,
     marginRight: 12,

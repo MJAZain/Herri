@@ -65,7 +65,7 @@ const ExpenseDetailScreen: React.FC<Props> = ({ route }) => {
         <Text style={styles.value}>{expense?.expenseType?.name ?? 'Unknown'}</Text>
 
         <Text style={styles.label}>Tanggal:</Text>
-        <Text style={styles.value}>{expense.date.toLocaleDateString()}</Text>
+        <Text style={styles.value}>{expense.date.toLocaleDateString('en-GB')}</Text>
 
         <Text style={styles.label}>Jumlah:</Text>
         <Text style={styles.value}>Rp {expense.amount.toLocaleString()}</Text>

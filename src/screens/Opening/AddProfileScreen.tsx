@@ -41,6 +41,7 @@ export default function AddProfileScreen() {
   const [name, setName] = useState('')
   const [shopName, setShopName] = useState('')
   const [shopAddress, setShopAddress] = useState('')
+  const [shopPhone, setShopPhone] = useState('')
   const [imageUri, setImageUri] = useState<string | null>(null)
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -91,12 +92,12 @@ export default function AddProfileScreen() {
   };
 
   const handleSave = () => {
-    if (!name || !shopName || !shopAddress) {
+    if (!name || !shopName || !shopAddress || !shopPhone) {
       showToast('Nama dan Nama Toko harus diisi.', 'error');
       return;
     }
 
-    createUser(name, shopName, shopAddress, imageUri || '');
+    createUser(name, shopName, shopAddress, shopPhone, imageUri || '');
     navigation.dispatch(
     CommonActions.reset({
       index: 0,
@@ -126,17 +127,28 @@ export default function AddProfileScreen() {
         <Text style={styles.label}>Silahkan masukkan nama anda:</Text>
       <TextInput
         style={styles.input}
-        placeholder="Nama Anda"
+        placeholder="Nama Anda (Maks 20 Karakter)"
         value={name}
         onChangeText={setName}
+        maxLength={20}
       />
 
       <Text style={styles.label}>Silahkan masukkan nama toko anda:</Text>
       <TextInput
         style={styles.input}
-        placeholder="Nama Toko"
+        placeholder="Nama Toko (Maks 20 Karakter)"
         value={shopName}
         onChangeText={setShopName}
+        maxLength={20}
+      />
+
+      <Text style={styles.label}>Silahkan masukkan no. telp toko anda:</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="No. Telp Toko"
+        value={shopPhone}
+        onChangeText={setShopPhone}
+        keyboardType="phone-pad"
       />
 
       <Text style={styles.label}>Silahkan masukkan alamat toko anda:</Text>
